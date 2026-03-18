@@ -1,5 +1,4 @@
-# TUNeS
-Temporal UNet emulator for Structure formation
+# TUNeS (Temporal UNet emulator for Structure formation)
 
 TUNeS is a neural network framework for accelerating N-body simulations by predicting the nonlinear evolution of the matter density field from an initial particle distribution. TUNeS employs a two-stage modeling strategy
 
@@ -9,6 +8,8 @@ TUNeS is a neural network framework for accelerating N-body simulations by predi
 This repository provides both:
 1. **Quick run using pretrained models**
 2. **Full training pipeline for customization**
+
+<img width="673" height="1024" alt="pipeline (1)" src="https://github.com/user-attachments/assets/d79a5a6f-9500-4c7e-82e8-ae3c91b3bfdd" />
 
 ---
 

@@ -123,7 +123,7 @@ def stitch_from_dir_xyz(
 
 
 class NbodyEmulator:
-    def __init__(self, model_dir: str, model_ckp_stages: Optional[tuple[str, str]] = None, device: str = "cuda"):
+    def __init__(self, model_dir: str, model_ckp_stages: Optional[tuple[str, str]] = None, device: str = "cuda", config: Optional[str] = None):
         
         self.model_dir = os.path.abspath(model_dir)
         self.device = torch.device(device)
@@ -136,8 +136,19 @@ class NbodyEmulator:
         cfg = resolve_paths(cfg)
         self.cfg = cfg
 
-        ckpt1_dir = cfg["stage1_train"]["checkpoint_dir"]
-        ckpt2_dir = cfg["stage2_train"]["checkpoint_dir"]
+
+        if config is not None:
+            config = os.path.abspath(config)
+            if not os.path.exists(config):
+                raise FileNotFoundError(f"Provided config not found: {config}")
+            ckpt_cfg = load_yaml(config)
+            ckpt_cfg = resolve_paths(ckpt_cfg)
+        else:
+            ckpt_cfg = cfg
+
+        ckpt1_dir = ckpt_cfg["stage1_train"]["checkpoint_dir"]
+        ckpt2_dir = ckpt_cfg["stage2_train"]["checkpoint_dir"]
+    
         if model_ckp_stages is None:
             model_ckp1 = os.path.join(self.model_dir, ckpt1_dir,'best_model.pt')
             model_ckp2 = os.path.join(self.model_dir, ckpt2_dir,'best_model.pt')

@@ -1,0 +1,196 @@
+# === Global settings ===
+project:
+  name: "TUNeS_example"
+  seed: 11
+  device: "cuda"
+  base_dir: "/mnt/f/research/SimML/tunes_mid/projects"
+  log_to_file: False
+  use_timestamp_log: False
+
+global_files:
+    file_dir_train:
+      - ["/mnt/f/research/SimML/Gadget-sim/simulations_256_500/nbody1/"]
+      - ["/mnt/f/research/SimML/Gadget-sim/simulations_256_500/nbody2/"]
+    file_dir_val:
+      - ["/mnt/f/research/SimML/Gadget-sim/simulations_256_500/nbody3/"]
+    file_name:
+      - ["snapshot_000.hdf5"]
+      - ["snapshot_002.hdf5"]
+      - ["snapshot_004.hdf5"]
+
+stage1_prepare:
+  module: data_prepare.prepare_disp_zdep
+  function: prepare_disp_zdep
+  params_loading:
+    out_dir: data/stage1
+  params:
+    out_dir: data/stage1
+    recompute: False
+
+stage1_dataset:
+  module: dataset.disp_zdep_dataset
+  class: DispZdepDataset
+  params:
+    target: dpos
+    dtype_str: float32
+    data_dir: data/stage1
+    sample_size: 100000
+    sample_mode: random
+
+
+stage1_model:
+  module: models.stage1
+  class: PerParticleCondDisplacement
+  params:
+    hidden_dim: 256
+    depth: 6
+    time_dim: 128
+    pos_fourier_bands: 8
+    pos_include_input: True
+    use_pos_fourier: True
+    dropout: 0.0
+
+stage1_loss:
+  module: torch.nn
+  class: MSELoss
+  params: {}
+
+stage1_optimizer:
+  name: AdamW
+  params:
+    lr: 0.001
+    weight_decay: 0.0001
+
+stage1_scheduler:
+  name: StepLR
+  params:
+    step_size: 50
+    gamma: 0.5
+
+stage1_train:
+  batch_size: 1
+  num_workers: 4
+  start_epoch: 0
+  epochs: 10
+  epoch_size: 15
+  save_every: 3
+  eval_every: 2
+  early_stopping_patience: 50
+  resume: True
+  checkpoint_dir: checkpoints/stage1
+  trainer_module: trainer.disp_zdep_trainer
+  trainer_class: Trainer
+
+
+stage1_output:
+  module: data_prepare.output_stage_zdep
+  function: output_stage
+  out_dir: data/stage1_output
+
+
+# -----------------------------
+# Stage 2
+# -----------------------------
+stage2_local_files:
+    file_dir_train:
+      - ["/mnt/f/research/SimML/Gadget-sim/simulations_256_500/rho_grid256/nbody1/"]
+      - ["/mnt/f/research/SimML/Gadget-sim/simulations_256_500/rho_grid256/nbody2/"]
+    file_dir_val:
+      - ["/mnt/f/research/SimML/Gadget-sim/simulations_256_500/rho_grid256/nbody3/"]
+    file_name:
+      - ["rho_000.h5"]
+      - ["rho_002.h5"]
+      - ["rho_004.h5"]
+
+stage2_prepare:
+  module: "data_prepare.prepare_window_from_pos_zdep"
+  function: "prepare_window_3d_dens"
+  params_loading:
+    out_dir: data/stage2_pairs
+    stage_source_dir: "data/stage1_output"
+    prev_glob: "*_pred.h5"
+    fin_local_key: stage2_local_files
+    map_prev_j_to_fin: True
+    use_prev_stage_output: True
+  params:
+    stage_source_dir: "data/stage1_output"
+    out_dir: "data/stage2_windows"
+    box_size: 500
+    Nw: 128
+    step: 64
+    grid_res: 256
+    recompute: False
+    transform: asinh
+    alpha: 1.0
+    device: cuda
+    dtype: float32
+
+
+stage2_dataset:
+  module: dataset.dens_3d_dataset_zdep
+  class: WindowDensityZDepDataset
+  params:
+    out_dir: data/stage2_windows
+    transform: default
+    data_type: rho
+    dtype: float32
+
+stage2_model:
+  module: models.stage2
+  class: UNet3D
+  params:
+    in_ch: 1
+    out_ch: 1
+    base_ch: 16
+    levels: 4
+    norm: group
+    residual: True
+    use_se: True
+    z_cond: True
+    fixed_z0: True
+    emb_dim: 64
+
+stage2_loss:
+  module: loss_fn.filter_box_loss
+  class: EdgeWeightedLoss
+  params:
+    base: l1
+    weight_mode: center
+    inner_frac: 0.8
+    min_w: 0.2
+
+stage2_optimizer:
+  name: AdamW
+  params: { lr: 1.0e-4, weight_decay: 1.0e-4 }
+
+stage2_scheduler:
+  name: CosineAnnealingLR
+  params: { T_max: 200, eta_min: 1.0e-7 }
+
+stage2_train:
+  checkpoint_dir: checkpoints/stage2
+  zdep: True
+  fixed_z0: True
+  start_epoch: 0
+  epochs: 10
+  save_every: 3
+  eval_every: 2
+  early_stopping_patience: 100
+  batch_size: 1
+  num_workers: 0
+  epoch_size: 10
+  resume: True
+  trainer_module: trainer.trainer_3d_dens_zdep
+  trainer_class: Trainer
+  trainer_params:
+    zdep: True
+    fixed_z0: True
+    z_key0: z0
+    z_key1: z1
+    accum_steps: 1
+    use_amp: True
+    amp_dtype: bf16
+  collate_fn:
+    module: dataset.dens_3d_dataset_zdep
+    function: collate_window_zdep_batch
+

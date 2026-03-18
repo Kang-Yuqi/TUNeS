@@ -7,13 +7,15 @@ from utils.Nbody_data_loader import NbodyLoader
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-config", required=True, help="model_dir")
+    parser.add_argument("-model_dir", required=True, help="model directory")
+    parser.add_argument("-config", required=True, help="config file used for running the model")
     parser.add_argument("-input", required=True, help="initial snapshot")
     parser.add_argument("-output", required=True, help="output directory")
     parser.add_argument("-z_fin", type=float, default=0.0, help="target redshift (default=0)")
     args = parser.parse_args()
 
-    model_dir = args.config
+    model_dir = args.model_dir
+    config = args.config
     input_initial = args.input
     output_dir = args.output
     z_fin = args.z_fin
@@ -25,7 +27,7 @@ def main():
 
     t0 = time.time()
 
-    emu = NbodyEmulator(model_dir=model_dir, device="cuda")
+    emu = NbodyEmulator(model_dir=model_dir, config=config, device="cuda")
 
     stage1_pred_path = emu.run_stage1(
         z_fin,

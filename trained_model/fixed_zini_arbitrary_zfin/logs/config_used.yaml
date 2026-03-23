@@ -1,0 +1,241 @@
+global_files:
+  file_dir_train:
+  - - /home/kangyq/Nbody_sim/sim_256_500/nbody_1/
+  - - /home/kangyq/Nbody_sim/sim_256_500/nbody_2/
+  - - /home/kangyq/Nbody_sim/sim_256_500/nbody_3/
+  - - /home/kangyq/Nbody_sim/sim_256_500/nbody_4/
+  - - /home/kangyq/Nbody_sim/sim_256_500/nbody_5/
+  - - /home/kangyq/Nbody_sim/sim_256_500/nbody_6/
+  - - /home/kangyq/Nbody_sim/sim_256_500/nbody_7/
+  - - /home/kangyq/Nbody_sim/sim_256_500/nbody_8/
+  file_dir_val:
+  - - /home/kangyq/Nbody_sim/sim_256_500/nbody_9/
+  file_name:
+  - - snapshot_000.hdf5
+  - - snapshot_001.hdf5
+  - - snapshot_002.hdf5
+  - - snapshot_003.hdf5
+  - - snapshot_004.hdf5
+  - - snapshot_005.hdf5
+  - - snapshot_006.hdf5
+  - - snapshot_007.hdf5
+  - - snapshot_008.hdf5
+  - - snapshot_009.hdf5
+  - - snapshot_010.hdf5
+  - - snapshot_011.hdf5
+  - - snapshot_012.hdf5
+  - - snapshot_013.hdf5
+  - - snapshot_014.hdf5
+  - - snapshot_015.hdf5
+paths:
+  checkpoints: /home/kangyq/HunDun_proj/projects/model_11_zdep_l2loss/checkpoints
+  data: /home/kangyq/HunDun_proj/projects/model_11_zdep_l2loss/data
+  logs: /home/kangyq/HunDun_proj/projects/model_11_zdep_l2loss/logs
+  root: /home/kangyq/HunDun_proj/projects/model_11_zdep_l2loss
+project:
+  base_dir: /home/kangyq/HunDun_proj/projects
+  device: cuda
+  log_to_file: false
+  name: model_11_zdep_l2loss
+  seed: 42
+  use_timestamp_log: false
+stage1_dataset:
+  class: DispZdepDataset
+  module: dataset.disp_zdep_dataset
+  params:
+    data_dir: data/stage1
+    dtype_str: float32
+    sample_mode: random
+    sample_size: 100000
+    target: dpos
+stage1_eval:
+  class: EvalStage1
+  module: evaluation.eval_disp_zdep
+  params:
+    checkpoint_path: checkpoints/stage1/best_model.pt
+    grid_size: 256
+    plot_out_dir: results_stage1
+    projection_plane: XY
+    sample_percent: 100
+    slice_range:
+    - 40
+    - 45
+stage1_loss:
+  class: MSELoss
+  module: torch.nn
+  params: {}
+stage1_model:
+  class: PerParticleCondDisplacement
+  module: models.stage1
+  params:
+    depth: 6
+    dropout: 0.0
+    hidden_dim: 256
+    pos_fourier_bands: 8
+    pos_include_input: true
+    time_dim: 128
+    use_pos_fourier: true
+stage1_optimizer:
+  name: AdamW
+  params:
+    lr: 0.001
+    weight_decay: 0.0001
+stage1_output:
+  function: output_stage
+  module: utils.output_stage_zdep
+  out_dir: data/stage1_output
+stage1_prepare:
+  function: prepare_disp_zdep
+  module: data_prepare.prepare_disp_zdep
+  params:
+    out_dir: data/stage1
+    recompute: false
+  params_loading:
+    out_dir: data/stage1
+stage1_scheduler:
+  name: StepLR
+  params:
+    gamma: 0.5
+    step_size: 50
+stage1_train:
+  batch_size: 1
+  checkpoint_dir: checkpoints/stage1
+  early_stopping_patience: 20
+  epoch_size: 150
+  epochs: 1000
+  eval_every: 5
+  num_workers: 4
+  resume: true
+  save_every: 50
+  start_epoch: 0
+  trainer_class: Trainer
+  trainer_module: trainer.disp_zdep_trainer
+stage2_dataset:
+  class: WindowDensityZDepDataset
+  module: dataset.dens_3d_dataset_zdep
+  params:
+    data_type: rho
+    dtype: float32
+    out_dir: data/stage2_windows
+    transform: default
+stage2_eval:
+  class: EvalStage2ZDep
+  module: evaluation.eval_zdep
+  params:
+    ckpt_stage2_path: checkpoints/stage2/best_model.pt
+    grid_size_pk: 256
+    kbins: 40
+    out_dir: data/eval_stage2
+    projection_plane: XY
+    slice_range:
+    - 0
+    - 64
+stage2_local_files:
+  file_dir_train:
+  - - /home/kangyq/Nbody_sim/sim_512_500/rho_grid256_256dens/nbody_1/
+  - - /home/kangyq/Nbody_sim/sim_512_500/rho_grid256_256dens/nbody_2/
+  - - /home/kangyq/Nbody_sim/sim_512_500/rho_grid256_256dens/nbody_3/
+  - - /home/kangyq/Nbody_sim/sim_512_500/rho_grid256_256dens/nbody_4/
+  - - /home/kangyq/Nbody_sim/sim_512_500/rho_grid256_256dens/nbody_5/
+  - - /home/kangyq/Nbody_sim/sim_512_500/rho_grid256_256dens/nbody_6/
+  - - /home/kangyq/Nbody_sim/sim_512_500/rho_grid256_256dens/nbody_7/
+  - - /home/kangyq/Nbody_sim/sim_512_500/rho_grid256_256dens/nbody_8/
+  file_dir_val:
+  - - /home/kangyq/Nbody_sim/sim_512_500/rho_grid256_256dens/nbody_9/
+  file_name:
+  - - rho_000.h5
+  - - rho_001.h5
+  - - rho_002.h5
+  - - rho_003.h5
+  - - rho_004.h5
+  - - rho_005.h5
+  - - rho_006.h5
+  - - rho_007.h5
+  - - rho_008.h5
+  - - rho_009.h5
+  - - rho_010.h5
+  - - rho_011.h5
+  - - rho_012.h5
+  - - rho_013.h5
+  - - rho_014.h5
+  - - rho_015.h5
+stage2_loss:
+  class: EdgeWeightedLoss
+  module: loss_fn.filter_box_loss
+  params:
+    base: l2
+    inner_frac: 0.8
+    min_w: 0.2
+    weight_mode: center
+stage2_model:
+  class: UNet3D
+  module: models.stage2
+  params:
+    base_ch: 16
+    emb_dim: 64
+    fixed_z0: true
+    in_ch: 1
+    levels: 4
+    norm: group
+    out_ch: 1
+    residual: true
+    use_se: true
+    z_cond: true
+stage2_optimizer:
+  name: AdamW
+  params:
+    lr: 0.0001
+    weight_decay: 0.0001
+stage2_prepare:
+  function: prepare_window_3d_dens
+  module: data_prepare.prepare_window_from_pos_zdep
+  params:
+    Nw: 128
+    alpha: 1.0
+    box_size: 500
+    device: cuda
+    dtype: float32
+    grid_res: 256
+    out_dir: data/stage2_windows
+    recompute: false
+    stage_source_dir: data/stage1_output
+    step: 64
+    transform: asinh
+  params_loading:
+    fin_local_key: stage2_local_files
+    map_prev_j_to_fin: true
+    out_dir: data/stage2_pairs
+    prev_glob: '*_pred.h5'
+    stage_source_dir: data/stage1_output
+    use_prev_stage_output: true
+stage2_scheduler:
+  name: CosineAnnealingLR
+  params:
+    T_max: 200
+    eta_min: 1.0e-07
+stage2_train:
+  batch_size: 1
+  checkpoint_dir: checkpoints/stage2
+  collate_fn:
+    function: collate_window_zdep_batch
+    module: dataset.dens_3d_dataset_zdep
+  early_stopping_patience: 200
+  epoch_size: 500
+  epochs: 8000
+  eval_every: 5
+  fixed_z0: true
+  num_workers: 0
+  resume: true
+  save_every: 100
+  start_epoch: 0
+  trainer_class: Trainer
+  trainer_module: trainer.trainer_3d_dens_zdep
+  trainer_params:
+    accum_steps: 1
+    amp_dtype: bf16
+    fixed_z0: true
+    use_amp: true
+    z_key0: z0
+    z_key1: z1
+    zdep: true
+  zdep: true

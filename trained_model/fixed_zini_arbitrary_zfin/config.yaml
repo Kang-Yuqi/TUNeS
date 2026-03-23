@@ -1,0 +1,2 @@
+paths:
+  checkpoints: TUNeS/trained_model/fixed_zini_arbitrary_zfin/checkpoints

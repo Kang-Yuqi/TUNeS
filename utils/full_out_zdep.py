@@ -3,7 +3,7 @@ import torch
 from tqdm import tqdm
 import numpy as np
 import h5py,yaml,importlib
-from NeuralNbody.data_handler import DataLoader as NbodyLoader
+from utils.Nbody_data_loader import NbodyLoader
 from typing import Optional, Literal, Dict
 
 def load_model(model_cfg, checkpoint_path, device):
@@ -14,23 +14,39 @@ def load_model(model_cfg, checkpoint_path, device):
     model.load_state_dict(state)
     return model.to(device).eval()
 
+
 def load_yaml(path: str):
     with open(path, "r") as f:
         return yaml.safe_load(f)
 
-def resolve_paths(cfg):
-    """把 cfg 中相对路径补成绝对路径（基于 cfg['paths']['root']）"""
-    project_root = cfg["paths"]["root"]
+import os
 
-    def _resolve_dict(d):
-        for k, v in d.items():
-            if isinstance(v, str) and ("dir" in k or "path" in k):
-                if not os.path.isabs(v):
-                    d[k] = os.path.join(project_root, v)
-            elif isinstance(v, dict):
-                _resolve_dict(v)
+def resolve_paths(cfg, cfg_path=None):
 
-    _resolve_dict(cfg)
+    base_root = None
+
+    project = cfg.get("project", {})
+    if isinstance(project, dict) and "base_dir" in project:
+        name = project.get("name", "unnamed_project")
+        base_root = os.path.join(project["base_dir"], name)
+    elif cfg_path is not None:
+        base_root = os.path.dirname(os.path.abspath(cfg_path))
+    else:
+        base_root = os.getcwd()
+
+    def _resolve(obj):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if isinstance(v, str) and ("dir" in k or "path" in k or k in ["checkpoints"]):
+                    if not os.path.isabs(v):
+                        obj[k] = os.path.abspath(os.path.join(base_root, v))
+                else:
+                    _resolve(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                _resolve(item)
+
+    _resolve(cfg)
     return cfg
 
 def _wrap(x: torch.Tensor, L: float) -> torch.Tensor:
@@ -129,18 +145,11 @@ class NbodyEmulator:
         self.device = torch.device(device)
 
         cfg_path = os.path.join(self.model_dir, "logs", "config_used.yaml")
-        if not os.path.exists(cfg_path):
-            raise FileNotFoundError(f"config_used.yaml not found: {cfg_path}")
-
         cfg = load_yaml(cfg_path)
         cfg = resolve_paths(cfg)
         self.cfg = cfg
 
-
         if config is not None:
-            config = os.path.abspath(config)
-            if not os.path.exists(config):
-                raise FileNotFoundError(f"Provided config not found: {config}")
             ckpt_cfg = load_yaml(config)
             ckpt_cfg = resolve_paths(ckpt_cfg)
         else:
@@ -148,6 +157,27 @@ class NbodyEmulator:
 
         ckpt1_dir = ckpt_cfg["stage1_train"]["checkpoint_dir"]
         ckpt2_dir = ckpt_cfg["stage2_train"]["checkpoint_dir"]
+
+        if model_ckp_stages is None:
+            model_ckp1 = os.path.join(ckpt1_dir, "best_model.pt")
+            model_ckp2 = os.path.join(ckpt2_dir, "best_model.pt")
+        else:
+            if model_ckp_stages[0] is None:
+                model_ckp1 = os.path.join(ckpt1_dir, "best_model.pt")
+            else:
+                model_ckp1 = os.path.join(
+                    ckpt1_dir, f"model_epoch_{model_ckp_stages[0]}.pt"
+                )
+
+            if model_ckp_stages[1] is None:
+                model_ckp2 = os.path.join(ckpt2_dir, "best_model.pt")
+            else:
+                model_ckp2 = os.path.join(
+                    ckpt2_dir, f"model_epoch_{model_ckp_stages[1]}.pt"
+                )
+
+        self.model_ckp1 = model_ckp1
+        self.model_ckp2 = model_ckp2
     
         if model_ckp_stages is None:
             model_ckp1 = os.path.join(self.model_dir, ckpt1_dir,'best_model.pt')

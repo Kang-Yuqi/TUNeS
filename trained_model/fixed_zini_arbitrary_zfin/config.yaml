@@ -1,2 +1,6 @@
-paths:
-  checkpoints: TUNeS/trained_model/fixed_zini_arbitrary_zfin/checkpoints
+stage1_train:
+  checkpoint_dir: trained_model/fixed_zini_arbitrary_zfin/checkpoints/stage1
+
+stage2_train:
+  checkpoint_dir: trained_model/fixed_zini_arbitrary_zfin/checkpoints/stage2
+
